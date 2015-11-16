@@ -5,21 +5,103 @@ output:
     keep_md: true
 ---
 
+```{r, echo=FALSE}
+# loading packages
+library(plyr)
+library(dplyr)
+```
+
 
 ## Loading and preprocessing the data
+First, we want to load and preprocess the data. The data in included in this repo zipped up. We unzip activity.zip and load it into data.
 
+```{r, echo=TRUE}
+# unzip data
+if (!file.exists("activity.csv")) {
+    unzip("activity.zip", "activity.csv")
+}
+# load data
+data <- read.csv("activity.csv")
+summary(data)
+```
 
+Then we preprocess:
+```{r, echo=TRUE}
+# preprocess
+data$date <- as.Date(data$date, format = "%Y-%m-%d")
+
+# data to answer total number of steps per day question
+d.steps <- data %>%
+           filter(!is.na(steps)) %>% 
+           group_by(date) %>% 
+           summarise(total_steps = sum(steps, na.rm = TRUE))
+
+# data to answer daily pattern question
+d.interval <- data %>% 
+              filter(!is.na(steps)) %>%                          
+              group_by(interval) %>%         
+              summarise(steps_mean = mean(steps))
+
+```
 
 ## What is mean total number of steps taken per day?
 
+Calculate total number of steps taken per day:
+```{r, echo=TRUE}
+print(d.steps)
+```
 
+Then a histogram:
+
+```{r, echo=TRUE}
+hist(d.steps$total_steps, main="Histogram of total steps per day", xlab = "Total steps per day")
+```
+
+Finally here are mean and median of total number of steps per day:
+
+```{r, echo=TRUE}
+steps_mean <- mean(d.steps$total_steps)
+steps_mean
+
+steps_median <- median(d.steps$total_steps)
+steps_median
+```
 
 ## What is the average daily activity pattern?
 
+```{r, echo=TRUE}
 
+plot(d.interval$interval, d.interval$steps_mean, type = "l", xlab = "interval", ylab = "steps", main = "Time series of steps against interval")
+```
+
+Interval with most number of steps:
+```{r, echo=TRUE}
+d.interval[which.max(d.interval$steps_mean),]
+```
 
 ## Imputing missing values
+First we count the total number of NAs in dataset:
+```{r, echo=TRUE}
+colSums(is.na(data))
+```
 
+
+We create a new dataset d.fill_missing and fill missing values with average number of steps in 5-min interval:
+
+```{r, echo=TRUE}
+d.fill_missing  <- data
+missing <- is.na(d.fill_missing$steps)
+mean_interval <- tapply(d.fill_missing$steps, d.fill_missing$interval, mean, na.rm = TRUE)
+
+d.fill_missing$steps[missing] <- mean_interval[as.character(d.fill_missing$interval[missing])]
+```
+
+As expected we find no NAs in this new data set:
+
+```{r, echo=TRUE}
+colSums(is.na(d.fill_missing))
+
+```
 
 
 ## Are there differences in activity patterns between weekdays and weekends?
